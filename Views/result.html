@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Detection Result - Vehicle Identity System</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --primary-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      }
+
+      body {
+        background: #f8f9fa;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .result-image {
+        max-width: 100%;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+
+      .vehicle-card {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        margin-bottom: 15px;
+      }
+
+      .badge-plate {
+        background: #1e40af;
+      }
+      .badge-success {
+        background: #10b981;
+      }
+      .badge-warning {
+        background: #f59e0b;
+        color: #000;
+      }
+
+      .json-output {
+        max-height: 400px;
+        overflow-y: auto;
+        background: #1e293b;
+        color: #e2e8f0;
+        border-radius: 12px;
+        padding: 20px;
+        font-family: "Courier New", monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav
+      class="navbar navbar-expand-lg navbar-dark"
+      style="background: var(--primary-gradient)"
+    >
+      <div class="container">
+        <a class="navbar-brand" href="/">
+          <i class="fas fa-car-side me-2"></i>
+          Vehicle Identity System
+        </a>
+        <div class="navbar-nav ms-auto">
+          <a class="nav-link" href="/"> <i class="fas fa-home"></i> Home </a>
+          <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+            <i class="fas fa-cogs"></i> Admin
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container py-5">
+      <div class="row mb-4">
+        <div class="col-12">
+          <h2>
+            <i class="fas fa-check-circle text-success"></i> Detection Complete
+          </h2>
+          <p class="text-muted">
+            Detected {{ result_data.vehicles|length if result_data else 0 }}
+            vehicle(s) {% if identity_ids %}| {{ identity_ids|length }} identity
+            assignment(s){% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Annotated Image -->
+        <div class="col-md-7">
+          <div class="card mb-4">
+            <div class="card-header bg-white">
+              <h6 class="mb-0">
+                <i class="fas fa-image text-primary me-2"></i>Annotated Image
+              </h6>
+            </div>
+            <div class="card-body text-center">
+              <img
+                src="data:image/jpeg;base64,{{ original_image }}"
+                class="result-image"
+                alt="Result"
+              />
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex gap-2 flex-wrap">
+                <a href="/" class="btn btn-primary">
+                  <i class="fas fa-upload"></i> Upload Another
+                </a>
+                <a
+                  href="{{ url_for('admin.dashboard') }}"
+                  class="btn btn-outline-primary"
+                >
+                  <i class="fas fa-th-large"></i> Dashboard
+                </a>
+                <a
+                  href="{{ url_for('admin.vehicles_list') }}"
+                  class="btn btn-outline-secondary"
+                >
+                  <i class="fas fa-car"></i> View All Vehicles
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Detection Results -->
+        <div class="col-md-5">
+          <div class="card mb-4">
+            <div
+              class="card-header bg-white d-flex justify-content-between align-items-center"
+            >
+              <h6 class="mb-0">
+                <i class="fas fa-car text-success me-2"></i>Detected Vehicles
+              </h6>
+              <span class="badge bg-primary"
+                >{{ result_data.vehicles|length if result_data else 0 }}</span
+              >
+            </div>
+            <div class="card-body">
+              {% if result_data and result_data.vehicles %} {% for vehicle in
+              result_data.vehicles %}
+              <div class="vehicle-card card">
+                <div class="card-body">
+                  <div
+                    class="d-flex justify-content-between align-items-start mb-2"
+                  >
+                    <h6 class="mb-0">
+                      {% if vehicle.plate and vehicle.plate.readable %}
+                      <span class="badge badge-plate"
+                        >{{ vehicle.plate.text }}</span
+                      >
+                      {% else %}
+                      <span class="badge bg-secondary">No Plate</span>
+                      {% endif %}
+                    </h6>
+                    <small class="text-muted">{{ vehicle.vehicle_id }}</small>
+                  </div>
+                  <div class="mb-2">
+                    <span class="badge bg-secondary"
+                      >{{ vehicle.vehicle_type }}</span
+                    >
+                    {% if vehicle.vehicle_color %}
+                    <span
+                      class="badge"
+                      style="background: {{ vehicle.vehicle_color }}"
+                      >{{ vehicle.vehicle_color }}</span
+                    >
+                    {% endif %}
+                  </div>
+                  {% if vehicle.plate %}
+                  <div class="mb-2">
+                    <small class="text-muted">OCR Confidence:</small>
+                    <div class="progress" style="height: 8px">
+                      <div
+                        class="progress-bar {% if vehicle.plate.confidence >= 0.7 %}bg-success{% elif vehicle.plate.confidence >= 0.4 %}bg-warning{% else %}bg-danger{% endif %}"
+                        style="width: {{ (vehicle.plate.confidence * 100)|int }}%"
+                      ></div>
+                    </div>
+                    <small
+                      >{{ (vehicle.plate.confidence * 100)|round(1) }}%</small
+                    >
+                  </div>
+                  {% endif %}
+                  <div>
+                    <small class="text-muted">Driver:</small>
+                    {% if vehicle.driver and vehicle.driver.present %}
+                    <span class="badge bg-success">Detected</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Not detected</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+              {% endfor %} {% else %}
+              <p class="text-muted text-center">No vehicles detected</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <!-- Identity Assignments -->
+          {% if identity_ids %}
+          <div class="card mb-4">
+            <div class="card-header bg-white">
+              <h6 class="mb-0">
+                <i class="fas fa-id-badge text-info me-2"></i>Identity
+                Assignments
+              </h6>
+            </div>
+            <div class="card-body">
+              {% for item in identity_ids %}
+              <div
+                class="d-flex justify-content-between align-items-center mb-2"
+              >
+                <a
+                  href="{{ url_for('admin.vehicle_detail', id=item.identity_id) }}"
+                >
+                  Identity #{{ item.identity_id }}
+                </a>
+                {% if item.is_new %}
+                <span class="badge bg-success">New Identity</span>
+                {% else %}
+                <span class="badge bg-info">Matched</span>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- JSON Output -->
+          <div class="card">
+            <div class="card-header bg-white">
+              <h6 class="mb-0">
+                <i class="fas fa-code text-warning me-2"></i>Raw JSON Output
+              </h6>
+            </div>
+            <div class="card-body p-0">
+              <pre class="json-output mb-0">{{ result_json }}</pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

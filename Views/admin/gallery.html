@@ -1,0 +1,359 @@
+{% extends 'base.html' %} {% block title %}Gallery - Vehicle Identity System{%
+endblock %} {% block page_title %}Vehicle Gallery{% endblock %} {% block
+extra_css %}
+<style>
+  .gallery-card {
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+    position: relative;
+  }
+
+  .gallery-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+    border-color: #3b82f6;
+  }
+
+  .gallery-thumbnail {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  }
+
+  .gallery-thumbnail-placeholder {
+    width: 100%;
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  }
+
+  .gallery-thumbnail-placeholder i {
+    font-size: 3rem;
+    color: #9ca3af;
+  }
+
+  .gallery-count-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .gallery-type-badge {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+  }
+
+  .gallery-stacked {
+    position: relative;
+    padding: 8px;
+  }
+
+  .gallery-stacked::before,
+  .gallery-stacked::after {
+    content: "";
+    position: absolute;
+    width: calc(100% - 24px);
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 4px 4px 0 0;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .gallery-stacked::before {
+    top: 0;
+    background: #d1d5db;
+  }
+
+  .gallery-stacked::after {
+    top: 4px;
+    background: #e5e7eb;
+  }
+
+  .verified-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(16, 185, 129, 0.9));
+    padding: 20px 12px 8px;
+  }
+
+  .group-filter-btn {
+    border-radius: 20px;
+    padding: 8px 20px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .group-filter-btn.active {
+    transform: scale(1.05);
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+  }
+
+  .stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .empty-gallery {
+    text-align: center;
+    padding: 80px 20px;
+  }
+
+  .empty-gallery i {
+    font-size: 5rem;
+    color: #d1d5db;
+    margin-bottom: 20px;
+  }
+</style>
+{% endblock %} {% block content %}
+<!-- Header with Stats -->
+<div
+  class="card mb-4"
+  style="
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    border: none;
+  "
+>
+  <div class="card-body text-white">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <h4 class="mb-1"><i class="fas fa-images"></i> Vehicle Gallery</h4>
+        <p class="mb-0 opacity-75">
+          Pengelompokan kendaraan seperti Google Photos
+        </p>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex gap-3 justify-content-md-end flex-wrap">
+          <div class="stat-pill">
+            <i class="fas fa-layer-group"></i>
+            <span>{{ total_groups }} Groups</span>
+          </div>
+          <div class="stat-pill">
+            <i class="fas fa-id-card"></i>
+            <span>{{ plate_groups }} Plate</span>
+          </div>
+          <div class="stat-pill">
+            <i class="fas fa-user"></i>
+            <span>{{ driver_groups }} Driver</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if is_dummy_data %}
+<div class="alert alert-info alert-dismissible fade show" role="alert">
+  <i class="fas fa-info-circle me-2"></i>
+  <strong>Demo Mode:</strong> Menampilkan data dummy. Upload gambar kendaraan
+  untuk melihat data real.
+  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<!-- Filter Buttons -->
+<div class="d-flex gap-2 mb-4 flex-wrap">
+  <a
+    href="{{ url_for('admin.gallery') }}"
+    class="btn group-filter-btn {{ 'btn-primary active' if group_by == 'all' else 'btn-outline-primary' }}"
+  >
+    <i class="fas fa-th"></i> Semua
+  </a>
+  <a
+    href="{{ url_for('admin.gallery', group_by='plate') }}"
+    class="btn group-filter-btn {{ 'btn-primary active' if group_by == 'plate' else 'btn-outline-primary' }}"
+  >
+    <i class="fas fa-id-card"></i> Plat Nomor
+  </a>
+  <a
+    href="{{ url_for('admin.gallery', group_by='driver') }}"
+    class="btn group-filter-btn {{ 'btn-primary active' if group_by == 'driver' else 'btn-outline-primary' }}"
+  >
+    <i class="fas fa-user"></i> Driver
+  </a>
+</div>
+
+<!-- Gallery Grid -->
+{% if groups %}
+<div class="row" id="gallery-grid">
+  {% for group in groups %}
+  <div class="col-6 col-md-4 col-lg-3 col-xl-2 mb-4">
+    <div class="gallery-card card h-100" onclick="openGroup({{ group.id }})">
+      <!-- Stacked Effect for multiple photos -->
+      <div class="gallery-stacked position-relative">
+        {% if group.representative_image %}
+        <img
+          src="{{ url_for('static', filename=group.representative_image.replace('static/', '')) }}"
+          class="gallery-thumbnail"
+          alt="Vehicle"
+        />
+        {% elif group.sample_images and group.sample_images|length > 0 %}
+        <img
+          src="{{ url_for('static', filename=group.sample_images[0].replace('static/', '')) }}"
+          class="gallery-thumbnail"
+          alt="Vehicle"
+        />
+        {% else %}
+        <div class="gallery-thumbnail-placeholder">
+          {% if group.type == 'plate' %}
+          <i class="fas fa-car"></i>
+          {% elif group.type == 'driver' %}
+          <i class="fas fa-user"></i>
+          {% else %}
+          <i class="fas fa-image"></i>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Count Badge -->
+        <span class="gallery-count-badge">
+          <i class="fas fa-images"></i> {{ group.count }}
+        </span>
+
+        <!-- Type Badge -->
+        <span class="gallery-type-badge">
+          {% if group.type == 'plate' %}
+          <span class="badge bg-primary"><i class="fas fa-id-card"></i></span>
+          {% elif group.type == 'driver' %}
+          <span class="badge bg-purple" style="background: #7c3aed"
+            ><i class="fas fa-user"></i
+          ></span>
+          {% else %}
+          <span class="badge bg-secondary"><i class="fas fa-eye"></i></span>
+          {% endif %}
+        </span>
+
+        <!-- Verified Overlay -->
+        {% if group.verified %}
+        <div class="verified-overlay">
+          <span class="badge bg-success"
+            ><i class="fas fa-check"></i> Verified</span
+          >
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="card-body p-3">
+        <!-- Group Label -->
+        <h6 class="mb-1 text-truncate" title="{{ group.label }}">
+          {% if group.plate_text %}
+          <span class="badge bg-primary me-1">{{ group.plate_text }}</span>
+          {% else %}
+          <span class="text-muted">{{ group.label }}</span>
+          {% endif %}
+        </h6>
+
+        <!-- Vehicle Info -->
+        <div class="d-flex flex-wrap gap-1 mb-2">
+          <span class="badge bg-secondary">{{ group.vehicle_type }}</span>
+          {% if group.vehicle_color %}
+          <span
+            class="badge"
+            style="background: {{ group.vehicle_color }}; 
+                              color: {{ 'white' if group.vehicle_color in ['black', 'blue', 'red', 'green', 'purple', 'brown'] else 'black' }};"
+          >
+            {{ group.vehicle_color }}
+          </span>
+          {% endif %}
+        </div>
+
+        <!-- Driver Face Indicator -->
+        <div class="small text-muted">
+          {% if group.has_driver_face %}
+          <i class="fas fa-user-check text-success"></i> Driver detected {% else
+          %} <i class="fas fa-user-slash text-secondary"></i> No driver {% endif
+          %}
+        </div>
+
+        <!-- Last Seen -->
+        <div class="small text-muted mt-1">
+          <i class="fas fa-clock"></i>
+          {{ group.last_seen.strftime('%d %b %H:%M') if group.last_seen else
+          'N/A' }}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-gallery card">
+  <i class="fas fa-images"></i>
+  <h4>Belum Ada Data</h4>
+  <p class="text-muted mb-4">
+    Upload gambar kendaraan untuk memulai pengelompokan
+  </p>
+  <a href="{{ url_for('api.index') }}" class="btn btn-primary btn-lg">
+    <i class="fas fa-upload"></i> Upload Gambar
+  </a>
+</div>
+{% endif %}
+
+<!-- Group Structure Info -->
+<div class="card mt-4">
+  <div class="card-header bg-white">
+    <h6 class="mb-0">
+      <i class="fas fa-info-circle text-info"></i> Struktur Data Grouping
+    </h6>
+  </div>
+  <div class="card-body">
+    <pre class="bg-dark text-light p-3 rounded"><code>{
+    "groups": [
+        {
+            "id": 1,
+            "label": "B 1234 XYZ",          // Plat nomor (prioritas 1)
+            "type": "plate",                 // plate / driver / visual
+            "plate_text": "B 1234 XYZ",
+            "vehicle_type": "car",
+            "vehicle_color": "white",
+            "count": 5,                      // Jumlah kemunculan
+            "representative_image": "...",   // Thumbnail utama
+            "identity_method": "plate",      // Metode identifikasi
+            "has_driver_face": true,         // Ada wajah driver?
+            "verified": true,
+            "first_seen": "2025-12-20T10:30:00",
+            "last_seen": "2025-12-27T02:30:00"
+        },
+        {
+            "id": 3,
+            "label": "Driver #3",            // Fallback ke driver
+            "type": "driver",
+            "plate_text": null,              // OCR gagal
+            "vehicle_type": "car",
+            "count": 2,
+            "identity_method": "face",
+            "has_driver_face": true,
+            ...
+        }
+    ]
+}</code></pre>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  function openGroup(id) {
+    window.location.href = "/admin/gallery/" + id;
+  }
+</script>
+{% endblock %}

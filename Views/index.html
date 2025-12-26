@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vehicle Identity System - Analisis Identifikasi Kendaraan</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+      :root {
+        --primary-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      }
+
+      body {
+        background: #f8f9fa;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      .hero {
+        background: var(--primary-gradient);
+        color: white;
+        padding: 60px 0;
+        margin-bottom: 40px;
+      }
+
+      .stat-card {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-5px);
+      }
+
+      .stat-card .icon-box {
+        width: 70px;
+        height: 70px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+      }
+
+      .action-card {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s;
+        cursor: pointer;
+      }
+
+      .action-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      }
+
+      .chart-container {
+        position: relative;
+        height: 300px;
+      }
+
+      footer {
+        background: #1e293b;
+        color: #94a3b8;
+        padding: 40px 0;
+        margin-top: 60px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav
+      class="navbar navbar-expand-lg navbar-dark"
+      style="background: var(--primary-gradient)"
+    >
+      <div class="container">
+        <a class="navbar-brand" href="/">
+          <i class="fas fa-car-side me-2"></i>
+          Vehicle Identity System
+        </a>
+        <button
+          class="navbar-toggler"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#navbarNav"
+        >
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link active" href="/">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('admin.dashboard') }}"
+                >Admin Dashboard</a
+              >
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="container text-center">
+        <h1 class="display-4 mb-3">
+          <i class="fas fa-car-side"></i>
+          Sistem Identifikasi Kendaraan
+        </h1>
+        <p class="lead mb-4">
+          Analisis Identifikasi Kendaraan dan Pengguna Lahan Parkir<br />
+          Berbasis Fusi Fitur Citra Video
+        </p>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+          <a href="#upload" class="btn btn-light btn-lg">
+            <i class="fas fa-upload me-2"></i>Upload Image
+          </a>
+          <a
+            href="{{ url_for('api.video_ui') }}?source=webcam"
+            class="btn btn-outline-light btn-lg"
+          >
+            <i class="fas fa-video me-2"></i>Start Webcam
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Statistics -->
+    <section class="container mb-5">
+      <div class="row g-4">
+        <div class="col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+              <div class="icon-box bg-primary bg-opacity-10 text-primary me-3">
+                <i class="fas fa-car"></i>
+              </div>
+              <div>
+                <h6 class="text-muted mb-1">Total Kendaraan</h6>
+                <h2 class="mb-0">{{ total_vehicles }}</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+              <div class="icon-box bg-success bg-opacity-10 text-success me-3">
+                <i class="fas fa-eye"></i>
+              </div>
+              <div>
+                <h6 class="text-muted mb-1">Total Deteksi</h6>
+                <h2 class="mb-0">{{ total_detections }}</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+              <div class="icon-box bg-warning bg-opacity-10 text-warning me-3">
+                <i class="fas fa-id-card"></i>
+              </div>
+              <div>
+                <h6 class="text-muted mb-1">Jenis Kendaraan</h6>
+                <h2 class="mb-0">{{ type_stats|length }}</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+              <div class="icon-box bg-info bg-opacity-10 text-info me-3">
+                <i class="fas fa-palette"></i>
+              </div>
+              <div>
+                <h6 class="text-muted mb-1">Warna Terdeteksi</h6>
+                <h2 class="mb-0">{{ color_stats|length }}</h2>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="container mb-5">
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-header bg-white">
+              <h6 class="mb-0">
+                <i class="fas fa-car text-primary me-2"></i>Distribusi Jenis
+                Kendaraan
+              </h6>
+            </div>
+            <div class="card-body">
+              <div class="chart-container">
+                <canvas id="typeChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-header bg-white">
+              <h6 class="mb-0">
+                <i class="fas fa-palette text-success me-2"></i>Distribusi Warna
+              </h6>
+            </div>
+            <div class="card-body">
+              <div class="chart-container">
+                <canvas id="colorChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-header bg-white">
+              <h6 class="mb-0">
+                <i class="fas fa-font text-warning me-2"></i>Kode Plat (Huruf
+                Pertama)
+              </h6>
+            </div>
+            <div class="card-body">
+              <div class="chart-container">
+                <canvas id="letterChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Upload Section -->
+    <section class="container mb-5" id="upload">
+      <div class="card">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="fas fa-upload text-primary me-2"></i>Upload Gambar untuk
+            Analisis
+          </h5>
+        </div>
+        <div class="card-body">
+          <form
+            action="{{ url_for('api.process_image') }}"
+            method="POST"
+            enctype="multipart/form-data"
+          >
+            <div class="row align-items-center">
+              <div class="col-md-8">
+                <input
+                  type="file"
+                  class="form-control form-control-lg"
+                  name="image"
+                  accept="image/*"
+                  required
+                />
+              </div>
+              <div class="col-md-4">
+                <button type="submit" class="btn btn-primary btn-lg w-100">
+                  <i class="fas fa-search me-2"></i>Analisis
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Action Cards -->
+    <section class="container mb-5">
+      <h4 class="mb-4 text-center">Pilih Sumber Input</h4>
+      <div class="row g-4">
+        <div class="col-md-4">
+          <a
+            href="{{ url_for('api.video_ui') }}?source=webcam"
+            class="text-decoration-none"
+          >
+            <div class="card action-card text-center p-4">
+              <i class="fas fa-camera fa-4x text-primary mb-3"></i>
+              <h5>Webcam</h5>
+              <p class="text-muted mb-0">
+                Gunakan kamera webcam untuk deteksi realtime
+              </p>
+            </div>
+          </a>
+        </div>
+        <div class="col-md-4">
+          <a href="#" class="text-decoration-none" onclick="promptIPCamera()">
+            <div class="card action-card text-center p-4">
+              <i class="fas fa-video fa-4x text-success mb-3"></i>
+              <h5>IP Camera</h5>
+              <p class="text-muted mb-0">
+                Hubungkan ke IP Camera / RTSP stream
+              </p>
+            </div>
+          </a>
+        </div>
+        <div class="col-md-4">
+          <a
+            href="{{ url_for('admin.dashboard') }}"
+            class="text-decoration-none"
+          >
+            <div class="card action-card text-center p-4">
+              <i class="fas fa-cogs fa-4x text-warning mb-3"></i>
+              <h5>Admin Panel</h5>
+              <p class="text-muted mb-0">
+                Kelola identitas kendaraan dan verifikasi
+              </p>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <div class="container text-center">
+        <h5 class="text-white mb-3">Vehicle Identity System</h5>
+        <p class="mb-2">
+          Analisis Identifikasi Kendaraan dan Pengguna Lahan Parkir<br />
+          Berbasis Fusi Fitur Citra Video
+        </p>
+        <p class="small mb-0">© 2025 - Powered by YOLOv8, OpenCV, Flask</p>
+      </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // Vehicle Type Chart
+      const typeCtx = document.getElementById('typeChart').getContext('2d');
+      new Chart(typeCtx, {
+          type: 'doughnut',
+          data: {
+              labels: [{% for stat in type_stats %}'{{ stat.label or "Unknown" }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+              datasets: [{
+                  data: [{% for stat in type_stats %}{{ stat.count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                  backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                  legend: { position: 'bottom' }
+              }
+          }
+      });
+
+      // Color Chart
+      const colorCtx = document.getElementById('colorChart').getContext('2d');
+      new Chart(colorCtx, {
+          type: 'pie',
+          data: {
+              labels: [{% for stat in color_stats %}'{{ stat.label or "Unknown" }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+              datasets: [{
+                  data: [{% for stat in color_stats %}{{ stat.count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                  backgroundColor: [{% for stat in color_stats %}'{{ stat.label or "#6b7280" }}'{% if not loop.last %}, {% endif %}{% endfor %}]
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                  legend: { position: 'bottom' }
+              }
+          }
+      });
+
+      // Letter Chart
+      const letterCtx = document.getElementById('letterChart').getContext('2d');
+      new Chart(letterCtx, {
+          type: 'bar',
+          data: {
+              labels: [{% for stat in letter_stats %}'{{ stat.label }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+              datasets: [{
+                  label: 'Jumlah',
+                  data: [{% for stat in letter_stats %}{{ stat.count }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                  backgroundColor: '#3b82f6'
+              }]
+          },
+          options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                  legend: { display: false }
+              },
+              scales: {
+                  y: { beginAtZero: true }
+              }
+          }
+      });
+
+      function promptIPCamera() {
+          const url = prompt('Masukkan URL IP Camera (RTSP/HTTP):');
+          if (url) {
+              window.location.href = '/video_ui?source=ipcam&url=' + encodeURIComponent(url);
+          }
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Detection - Vehicle Identity System</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <!-- Font Awesome -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      rel="stylesheet"
+    />
+
+    <style>
+      :root {
+        --primary-gradient: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+      }
+
+      body {
+        background: #1e293b;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+      }
+
+      .navbar {
+        background: var(--primary-gradient) !important;
+      }
+
+      .video-container {
+        background: #0f172a;
+        border-radius: 16px;
+        padding: 20px;
+        margin-top: 20px;
+      }
+
+      .video-frame {
+        width: 100%;
+        max-width: 1280px;
+        border-radius: 12px;
+        border: 3px solid #3b82f6;
+      }
+
+      .status-badge {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        z-index: 10;
+      }
+
+      .controls-panel {
+        background: #0f172a;
+        border-radius: 16px;
+        padding: 20px;
+        margin-top: 20px;
+      }
+
+      .stat-item {
+        text-align: center;
+        padding: 15px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+      }
+
+      .stat-item h3 {
+        color: #3b82f6;
+        margin-bottom: 5px;
+      }
+
+      .stat-item small {
+        color: #94a3b8;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+      <div class="container">
+        <a class="navbar-brand" href="/">
+          <i class="fas fa-car-side me-2"></i>
+          Vehicle Identity System
+        </a>
+        <div class="navbar-nav ms-auto">
+          <a class="nav-link" href="/"> <i class="fas fa-home"></i> Home </a>
+          <a class="nav-link" href="{{ url_for('admin.dashboard') }}">
+            <i class="fas fa-cogs"></i> Admin
+          </a>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container py-4">
+      <div class="row">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h2 class="text-white mb-1">
+                <i class="fas fa-video text-primary"></i> Live Detection
+              </h2>
+              <p class="text-secondary mb-0">
+                Source: {% if source == 'webcam' %}
+                <span class="badge bg-success">Webcam</span>
+                {% else %}
+                <span class="badge bg-info">IP Camera</span>
+                {% endif %}
+              </p>
+            </div>
+            <div>
+              <a href="/" class="btn btn-outline-light">
+                <i class="fas fa-stop"></i> Stop & Exit
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Video Stream -->
+        <div class="col-lg-9">
+          <div class="video-container position-relative text-center">
+            <span class="badge bg-danger status-badge">
+              <i class="fas fa-circle"></i> LIVE
+            </span>
+
+            {% if source == 'webcam' %}
+            <img
+              src="{{ url_for('api.webcam_feed') }}"
+              class="video-frame"
+              alt="Webcam Feed"
+              id="videoFeed"
+            />
+            {% else %}
+            <img
+              src="{{ url_for('api.ipcam_feed', url=url) }}"
+              class="video-frame"
+              alt="IP Camera Feed"
+              id="videoFeed"
+            />
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-3">
+          <div class="controls-panel">
+            <h5 class="text-white mb-4">
+              <i class="fas fa-sliders-h"></i> Controls
+            </h5>
+
+            <!-- Source Info -->
+            <div class="mb-4">
+              <label class="text-secondary mb-2">Source Type</label>
+              <div class="form-control bg-dark text-white border-0">
+                {% if source == 'webcam' %}
+                <i class="fas fa-camera me-2"></i> Webcam (Device 0) {% else %}
+                <i class="fas fa-video me-2"></i> {{ url or 'IP Camera' }} {%
+                endif %}
+              </div>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="row g-2 mb-4">
+              <div class="col-6">
+                <div class="stat-item">
+                  <h3 id="identityCount">-</h3>
+                  <small>Identities</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="stat-item">
+                  <h3 id="observationCount">-</h3>
+                  <small>Observations</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="d-grid gap-2">
+              <a
+                href="{{ url_for('admin.vehicles_list') }}?status=unverified"
+                class="btn btn-warning"
+                target="_blank"
+              >
+                <i class="fas fa-tasks"></i> Review Unverified
+              </a>
+              <a
+                href="{{ url_for('admin.dashboard') }}"
+                class="btn btn-outline-light"
+                target="_blank"
+              >
+                <i class="fas fa-th-large"></i> Open Dashboard
+              </a>
+            </div>
+          </div>
+
+          <!-- Connection Status -->
+          <div class="controls-panel mt-3">
+            <h6 class="text-white mb-3">
+              <i class="fas fa-wifi"></i> Connection Status
+            </h6>
+            <div class="d-flex align-items-center">
+              <span class="badge bg-success me-2" id="connectionStatus"
+                >Connected</span
+              >
+              <small class="text-secondary"
+                >Frame rate: <span id="fps">-</span> fps</small
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+      // Update stats periodically
+      function updateStats() {
+        fetch("/api/stats")
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.success) {
+              document.getElementById("identityCount").textContent =
+                data.data.total_identities;
+              document.getElementById("observationCount").textContent =
+                data.data.total_observations;
+            }
+          })
+          .catch(() => {});
+      }
+
+      // FPS calculation
+      let frameCount = 0;
+      let lastTime = Date.now();
+
+      const videoFeed = document.getElementById("videoFeed");
+      videoFeed.onload = function () {
+        frameCount++;
+        const now = Date.now();
+        if (now - lastTime >= 1000) {
+          document.getElementById("fps").textContent = frameCount;
+          frameCount = 0;
+          lastTime = now;
+        }
+      };
+
+      videoFeed.onerror = function () {
+        document.getElementById("connectionStatus").textContent =
+          "Disconnected";
+        document.getElementById("connectionStatus").className =
+          "badge bg-danger me-2";
+      };
+
+      // Update stats every 5 seconds
+      updateStats();
+      setInterval(updateStats, 5000);
+    </script>
+  </body>
+</html>

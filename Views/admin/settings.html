@@ -1,0 +1,340 @@
+{% extends 'base.html' %} {% block title %}Settings - Vehicle Identity System{%
+endblock %} {% block page_title %}Settings{% endblock %} {% block content %}
+<h5 class="mb-4">System Settings</h5>
+
+<div class="row">
+  <div class="col-md-6">
+    <!-- OCR Configuration -->
+    <div class="card mb-4">
+      <div class="card-header bg-white">
+        <h6 class="mb-0">
+          <i class="fas fa-id-card text-warning"></i> OCR Configuration
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Primary Confidence Threshold</label>
+          <input
+            type="range"
+            class="form-range"
+            min="0"
+            max="100"
+            value="{{ (plate_threshold * 100)|int }}"
+            id="plate-threshold"
+          />
+          <div class="d-flex justify-content-between">
+            <small class="text-muted">0%</small>
+            <small
+              ><strong id="plate-threshold-value"
+                >{{ (plate_threshold * 100)|int }}%</strong
+              ></small
+            >
+            <small class="text-muted">100%</small>
+          </div>
+          <small class="text-muted"
+            >Above this threshold, plate text is used as primary identity
+            key</small
+          >
+        </div>
+        <div class="alert alert-info">
+          <strong>Current:</strong> {{ (plate_threshold * 100)|int }}%
+          <br /><small
+            >OCR results above this confidence are considered reliable for
+            identity matching</small
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Face Recognition -->
+    <div class="card mb-4">
+      <div class="card-header bg-white">
+        <h6 class="mb-0">
+          <i class="fas fa-user text-danger"></i> Face Recognition
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Similarity Threshold</label>
+          <input
+            type="range"
+            class="form-range"
+            min="0"
+            max="100"
+            value="{{ (face_threshold * 100)|int }}"
+            id="face-threshold"
+          />
+          <div class="d-flex justify-content-between">
+            <small class="text-muted">0%</small>
+            <small
+              ><strong id="face-threshold-value"
+                >{{ (face_threshold * 100)|int }}%</strong
+              ></small
+            >
+            <small class="text-muted">100%</small>
+          </div>
+          <small class="text-muted"
+            >Face embeddings with similarity above this threshold are considered
+            a match</small
+          >
+        </div>
+        <div class="form-check form-switch">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            id="face-fallback"
+            checked
+          />
+          <label class="form-check-label" for="face-fallback">
+            Enable face-based fallback when OCR fails
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <!-- Visual Features -->
+    <div class="card mb-4">
+      <div class="card-header bg-white">
+        <h6 class="mb-0">
+          <i class="fas fa-eye text-info"></i> Visual Features
+        </h6>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label">Cluster Matching Threshold</label>
+          <input
+            type="range"
+            class="form-range"
+            min="0"
+            max="100"
+            value="{{ (cluster_threshold * 100)|int }}"
+            id="cluster-threshold"
+          />
+          <div class="d-flex justify-content-between">
+            <small class="text-muted">0%</small>
+            <small
+              ><strong id="cluster-threshold-value"
+                >{{ (cluster_threshold * 100)|int }}%</strong
+              ></small
+            >
+            <small class="text-muted">100%</small>
+          </div>
+        </div>
+        <div class="form-check mb-2">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            checked
+            id="use-color"
+          />
+          <label class="form-check-label" for="use-color"
+            >Use vehicle color</label
+          >
+        </div>
+        <div class="form-check mb-2">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            checked
+            id="use-type"
+          />
+          <label class="form-check-label" for="use-type"
+            >Use vehicle type</label
+          >
+        </div>
+        <div class="form-check">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            checked
+            id="use-time"
+          />
+          <label class="form-check-label" for="use-time"
+            >Use temporal proximity</label
+          >
+        </div>
+      </div>
+    </div>
+
+    <!-- Matching Weights -->
+    <div class="card mb-4">
+      <div class="card-header bg-white">
+        <h6 class="mb-0">
+          <i class="fas fa-balance-scale text-primary"></i> Matching Weights
+        </h6>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>Weight</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Plate Text</td>
+              <td><span class="badge bg-primary">{{ weight_plate }}</span></td>
+            </tr>
+            <tr>
+              <td>Face Embedding</td>
+              <td><span class="badge bg-danger">{{ weight_face }}</span></td>
+            </tr>
+            <tr>
+              <td>Vehicle Type</td>
+              <td><span class="badge bg-secondary">0.5</span></td>
+            </tr>
+            <tr>
+              <td>Vehicle Color</td>
+              <td><span class="badge bg-secondary">0.5</span></td>
+            </tr>
+            <tr>
+              <td>Temporal Proximity</td>
+              <td><span class="badge bg-secondary">0.5</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <small class="text-muted"
+          >Higher weights give more influence in identity matching</small
+        >
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Management -->
+<div class="row">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-white">
+        <h6 class="mb-0">
+          <i class="fas fa-database text-success"></i> Data Management
+        </h6>
+      </div>
+      <div class="card-body">
+        <button
+          class="btn btn-outline-primary w-100 mb-2"
+          onclick="backupDatabase()"
+        >
+          <i class="fas fa-download"></i> Export Database
+        </button>
+        <button
+          class="btn btn-outline-warning w-100 mb-2"
+          onclick="reprocessAll()"
+        >
+          <i class="fas fa-sync"></i> Reprocess All Identities
+        </button>
+        <button class="btn btn-outline-danger w-100" onclick="clearAllData()">
+          <i class="fas fa-trash"></i> Clear All Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="fas fa-history"></i> Recent Actions</h6>
+      </div>
+      <div class="card-body" style="max-height: 300px; overflow-y: auto">
+        <ul class="list-unstyled">
+          {% for action in recent_actions %}
+          <li class="mb-3 pb-3 border-bottom">
+            <div class="d-flex justify-content-between">
+              <span
+                class="badge bg-{{ 'success' if action.action == 'verify' else 'warning' if action.action == 'merge' else 'info' if action.action == 'split' else 'secondary' }}"
+              >
+                {{ action.action }}
+              </span>
+              <small class="text-muted"
+                >{{ action.timestamp.strftime('%d/%m %H:%M') if action.timestamp
+                else '-' }}</small
+              >
+            </div>
+            <small>{{ action.entity_type }} #{{ action.entity_id }}</small>
+          </li>
+          {% else %}
+          <li class="text-muted text-center">No recent actions</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // Range slider updates
+  document
+    .getElementById("plate-threshold")
+    .addEventListener("input", function () {
+      document.getElementById("plate-threshold-value").textContent =
+        this.value + "%";
+    });
+  document
+    .getElementById("face-threshold")
+    .addEventListener("input", function () {
+      document.getElementById("face-threshold-value").textContent =
+        this.value + "%";
+    });
+  document
+    .getElementById("cluster-threshold")
+    .addEventListener("input", function () {
+      document.getElementById("cluster-threshold-value").textContent =
+        this.value + "%";
+    });
+
+  function backupDatabase() {
+    // Fetch all data and create JSON backup
+    Promise.all([
+      fetch("/api/identities?per_page=10000").then((r) => r.json()),
+      fetch("/api/observations?per_page=100000").then((r) => r.json()),
+    ]).then(([identities, observations]) => {
+      const backup = {
+        exported_at: new Date().toISOString(),
+        identities: identities.data,
+        observations: observations.data,
+      };
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vehicle_identity_backup_${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      a.click();
+    });
+  }
+
+  function reprocessAll() {
+    alert(
+      "Reprocessing is not implemented yet. This would re-run identity matching on all observations."
+    );
+  }
+
+  function clearAllData() {
+    if (
+      !confirm(
+        "Are you sure you want to delete ALL data? This cannot be undone!"
+      )
+    ) {
+      return;
+    }
+    if (
+      !confirm(
+        "REALLY sure? This will delete all vehicle identities and observations!"
+      )
+    ) {
+      return;
+    }
+
+    alert(
+      "Clear functionality requires backend implementation. Please clear the database manually."
+    );
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,414 @@
+{% extends 'base.html' %} {% block title %}Merge & Split - Vehicle Identity
+System{% endblock %} {% block page_title %}Merge & Split{% endblock %} {% block
+content %}
+<div class="mb-4">
+  <h5 class="mb-0">Merge & Split Identities</h5>
+  <p class="text-muted mb-0">Correct grouping errors manually</p>
+</div>
+
+<div class="row">
+  <!-- Merge Section -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h6 class="mb-0">
+          <i class="fas fa-object-group"></i> Merge Identities
+        </h6>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">
+          Combine two or more identities that represent the same vehicle
+        </p>
+
+        <div class="mb-3">
+          <label class="form-label">Primary Identity (to keep)</label>
+          <select class="form-select" id="merge-primary">
+            <option value="">Select primary...</option>
+            {% for v in identities %}
+            <option value="{{ v.id }}">
+              #{{ v.id }} - {{ v.plate_text or 'No Plate' }} ({{
+              v.detection_count }} obs, {{ v.vehicle_type or 'Unknown' }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Identities to Merge Into Primary</label>
+          <select class="form-select" id="merge-secondary" multiple size="6">
+            {% for v in identities %}
+            <option value="{{ v.id }}">
+              #{{ v.id }} - {{ v.plate_text or 'No Plate' }} ({{
+              v.detection_count }} obs)
+            </option>
+            {% endfor %}
+          </select>
+          <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+        </div>
+
+        <!-- Preview -->
+        <div id="merge-preview" class="mb-3" style="display: none">
+          <div class="alert alert-info">
+            <strong>Merge Preview:</strong>
+            <div id="merge-preview-text"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-100" onclick="performMerge()">
+          <i class="fas fa-compress-arrows-alt"></i> Merge Selected
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Split Section -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-warning text-dark">
+        <h6 class="mb-0"><i class="fas fa-cut"></i> Split Identity</h6>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">
+          Separate observations that were incorrectly grouped
+        </p>
+
+        <div class="mb-3">
+          <label class="form-label">Select Identity to Split</label>
+          <select
+            class="form-select"
+            id="split-identity"
+            onchange="loadObservations()"
+          >
+            <option value="">Choose identity...</option>
+            {% for v in identities %}
+            <option value="{{ v.id }}">
+              #{{ v.id }} - {{ v.plate_text or 'No Plate' }} ({{
+              v.detection_count }} obs)
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div id="split-observations" class="mb-3" style="display: none">
+          <label class="form-label">Select Observations to Separate</label>
+          <div
+            class="list-group"
+            id="split-observation-list"
+            style="max-height: 300px; overflow-y: auto"
+          >
+            <!-- Populated by JS -->
+          </div>
+          <small class="text-muted"
+            >Selected observations will be moved to a new identity</small
+          >
+        </div>
+
+        <button class="btn btn-warning w-100" onclick="performSplit()">
+          <i class="fas fa-cut"></i> Split Selected
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Comparison Section -->
+<div class="row mt-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header bg-white">
+        <h6 class="mb-0">
+          <i class="fas fa-exchange-alt"></i> Compare Identities
+        </h6>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">Select two identities to compare side by side</p>
+
+        <div class="row mb-4">
+          <div class="col-md-5">
+            <select
+              class="form-select"
+              id="compare-left"
+              onchange="updateComparison()"
+            >
+              <option value="">Select first identity...</option>
+              {% for v in identities %}
+              <option value="{{ v.id }}">
+                #{{ v.id }} - {{ v.plate_text or 'No Plate' }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2 text-center">
+            <div class="py-2">
+              <i class="fas fa-arrows-alt-h fa-2x text-muted"></i>
+            </div>
+          </div>
+          <div class="col-md-5">
+            <select
+              class="form-select"
+              id="compare-right"
+              onchange="updateComparison()"
+            >
+              <option value="">Select second identity...</option>
+              {% for v in identities %}
+              <option value="{{ v.id }}">
+                #{{ v.id }} - {{ v.plate_text or 'No Plate' }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <div id="comparison-result" class="row" style="display: none">
+          <div class="col-md-5" id="compare-left-content">
+            <!-- Left identity details -->
+          </div>
+          <div class="col-md-2 text-center">
+            <div class="card bg-light">
+              <div class="card-body">
+                <h6 class="text-muted">Similarity</h6>
+                <h3 id="similarity-score">-</h3>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-5" id="compare-right-content">
+            <!-- Right identity details -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  // Update merge preview when selections change
+  document
+    .getElementById("merge-primary")
+    .addEventListener("change", updateMergePreview);
+  document
+    .getElementById("merge-secondary")
+    .addEventListener("change", updateMergePreview);
+
+  function updateMergePreview() {
+    const primary = document.getElementById("merge-primary");
+    const secondary = document.getElementById("merge-secondary");
+    const preview = document.getElementById("merge-preview");
+    const previewText = document.getElementById("merge-preview-text");
+
+    const primaryVal = primary.value;
+    const secondaryVals = Array.from(secondary.selectedOptions)
+      .map((o) => o.value)
+      .filter((v) => v !== primaryVal);
+
+    if (primaryVal && secondaryVals.length > 0) {
+      preview.style.display = "block";
+      previewText.textContent = `Will merge identities ${secondaryVals.join(
+        ", "
+      )} into identity ${primaryVal}`;
+    } else {
+      preview.style.display = "none";
+    }
+  }
+
+  function performMerge() {
+    const primaryId = parseInt(document.getElementById("merge-primary").value);
+    const secondaryIds = Array.from(
+      document.getElementById("merge-secondary").selectedOptions
+    )
+      .map((o) => parseInt(o.value))
+      .filter((id) => id !== primaryId);
+
+    if (!primaryId) {
+      alert("Please select a primary identity");
+      return;
+    }
+
+    if (secondaryIds.length === 0) {
+      alert("Please select at least one identity to merge");
+      return;
+    }
+
+    if (
+      !confirm(`Merge ${secondaryIds.length} identities into #${primaryId}?`)
+    ) {
+      return;
+    }
+
+    fetch("/api/identities/merge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        primary_id: primaryId,
+        secondary_ids: secondaryIds,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          alert(`Successfully merged ${data.merged_count} identities`);
+          location.reload();
+        } else {
+          alert("Error: " + data.error);
+        }
+      });
+  }
+
+  function loadObservations() {
+    const identityId = document.getElementById("split-identity").value;
+    const container = document.getElementById("split-observations");
+    const list = document.getElementById("split-observation-list");
+
+    if (!identityId) {
+      container.style.display = "none";
+      return;
+    }
+
+    fetch(`/api/observations?identity_id=${identityId}&per_page=100`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          list.innerHTML = data.data
+            .map(
+              (obs) => `
+                        <label class="list-group-item">
+                            <input class="form-check-input me-2" type="checkbox" value="${
+                              obs.id
+                            }">
+                            ${obs.timestamp || "Unknown time"} - ${
+                obs.source_type || "image"
+              } 
+                            ${obs.plate_text ? `(${obs.plate_text})` : ""}
+                        </label>
+                    `
+            )
+            .join("");
+          container.style.display = "block";
+        }
+      });
+  }
+
+  function performSplit() {
+    const identityId = parseInt(
+      document.getElementById("split-identity").value
+    );
+    const observationIds = Array.from(
+      document.querySelectorAll("#split-observation-list input:checked")
+    ).map((el) => parseInt(el.value));
+
+    if (!identityId) {
+      alert("Please select an identity to split");
+      return;
+    }
+
+    if (observationIds.length === 0) {
+      alert("Please select at least one observation to split");
+      return;
+    }
+
+    if (
+      !confirm(
+        `Split ${observationIds.length} observations into a new identity?`
+      )
+    ) {
+      return;
+    }
+
+    fetch("/api/identities/split", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identity_id: identityId,
+        observation_ids: observationIds,
+      }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          alert(`Successfully created new identity #${data.new_identity_id}`);
+          location.reload();
+        } else {
+          alert("Error: " + data.error);
+        }
+      });
+  }
+
+  function updateComparison() {
+    const leftId = document.getElementById("compare-left").value;
+    const rightId = document.getElementById("compare-right").value;
+    const result = document.getElementById("comparison-result");
+
+    if (!leftId || !rightId) {
+      result.style.display = "none";
+      return;
+    }
+
+    Promise.all([
+      fetch(`/api/identities/${leftId}`).then((r) => r.json()),
+      fetch(`/api/identities/${rightId}`).then((r) => r.json()),
+    ]).then(([leftData, rightData]) => {
+      if (leftData.success && rightData.success) {
+        const left = leftData.data;
+        const right = rightData.data;
+
+        document.getElementById("compare-left-content").innerHTML =
+          renderIdentityCard(left);
+        document.getElementById("compare-right-content").innerHTML =
+          renderIdentityCard(right);
+
+        // Calculate simple similarity
+        let score = 0;
+        if (
+          left.plate_text &&
+          right.plate_text &&
+          left.plate_text === right.plate_text
+        )
+          score += 50;
+        if (left.vehicle_type === right.vehicle_type) score += 25;
+        if (left.vehicle_color === right.vehicle_color) score += 25;
+
+        document.getElementById("similarity-score").textContent = score + "%";
+        document.getElementById("similarity-score").className =
+          score >= 75
+            ? "text-success"
+            : score >= 50
+            ? "text-warning"
+            : "text-danger";
+
+        result.style.display = "flex";
+      }
+    });
+  }
+
+  function renderIdentityCard(v) {
+    return `
+            <div class="card">
+                <div class="card-body text-center">
+                    ${
+                      v.representative_image
+                        ? `<img src="/static/${v.representative_image.replace(
+                            "static/",
+                            ""
+                          )}" class="img-fluid rounded mb-3" style="max-height: 150px;">`
+                        : '<div class="bg-light rounded d-flex align-items-center justify-content-center mb-3" style="height: 150px;"><i class="fas fa-car fa-3x text-muted"></i></div>'
+                    }
+                    <h5>${v.plate_text || "No Plate"}</h5>
+                    <p class="text-muted">#${v.id}</p>
+                    <div class="mb-2">
+                        <span class="badge bg-secondary">${
+                          v.vehicle_type || "Unknown"
+                        }</span>
+                        ${
+                          v.vehicle_color
+                            ? `<span class="badge" style="background: ${v.vehicle_color}">${v.vehicle_color}</span>`
+                            : ""
+                        }
+                    </div>
+                    <small class="text-muted">${
+                      v.detection_count
+                    } detections</small>
+                </div>
+            </div>
+        `;
+  }
+</script>
+{% endblock %}

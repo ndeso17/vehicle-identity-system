@@ -1,0 +1,456 @@
+{% extends 'base.html' %} {% block title %}{{ group.label }} - Gallery Detail{%
+endblock %} {% block page_title %}Gallery Detail{% endblock %} {% block
+extra_css %}
+<style>
+  .photo-card {
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: pointer;
+  }
+
+  .photo-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .photo-thumbnail {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+  }
+
+  .photo-thumbnail-placeholder {
+    width: 100%;
+    height: 180px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #e5e7eb 0%, #d1d5db 100%);
+  }
+
+  .photo-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
+    padding: 30px 12px 12px;
+    color: white;
+  }
+
+  .source-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+  }
+
+  .ocr-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
+
+  .group-header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+    border-radius: 16px;
+    padding: 30px;
+    color: white;
+    margin-bottom: 24px;
+  }
+
+  .info-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 15px;
+    text-align: center;
+  }
+
+  .info-item h4 {
+    margin-bottom: 5px;
+  }
+
+  .info-item small {
+    opacity: 0.8;
+  }
+
+  .timeline-badge {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+  }
+</style>
+{% endblock %} {% block content %}
+<!-- Back Button -->
+<div class="mb-3">
+  <a href="{{ url_for('admin.gallery') }}" class="text-muted">
+    <i class="fas fa-arrow-left"></i> Kembali ke Gallery
+  </a>
+</div>
+
+<!-- Group Header -->
+<div class="group-header">
+  <div class="row align-items-center">
+    <div class="col-md-8">
+      <div class="d-flex align-items-center gap-3 mb-3">
+        {% if group.type == 'plate' %}
+        <div class="timeline-badge bg-primary">
+          <i class="fas fa-id-card"></i>
+        </div>
+        {% elif group.type == 'driver' %}
+        <div class="timeline-badge" style="background: #7c3aed">
+          <i class="fas fa-user"></i>
+        </div>
+        {% else %}
+        <div class="timeline-badge bg-secondary">
+          <i class="fas fa-eye"></i>
+        </div>
+        {% endif %}
+        <div>
+          <h3 class="mb-0">{{ group.label }}</h3>
+          <p class="mb-0 opacity-75">
+            {% if group.type == 'plate' %} Dikelompokkan berdasarkan Plat Nomor
+            {% elif group.type == 'driver' %} Dikelompokkan berdasarkan Wajah
+            Driver {% else %} Dikelompokkan berdasarkan Visual {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2 flex-wrap">
+        {% if group.plate_text %}
+        <span class="badge bg-light text-dark fs-6"
+          ><i class="fas fa-id-card"></i> {{ group.plate_text }}</span
+        >
+        {% endif %}
+        <span class="badge bg-light text-dark fs-6"
+          ><i class="fas fa-car"></i> {{ group.vehicle_type or 'Unknown'
+          }}</span
+        >
+        {% if group.vehicle_color %}
+        <span
+          class="badge fs-6"
+          style="background: {{ group.vehicle_color }}; 
+                          color: {{ 'white' if group.vehicle_color in ['black', 'blue', 'red', 'green', 'purple', 'brown'] else 'black' }};"
+        >
+          <i class="fas fa-palette"></i> {{ group.vehicle_color }}
+        </span>
+        {% endif %} {% if group.verified %}
+        <span class="badge bg-success fs-6"
+          ><i class="fas fa-check-circle"></i> Verified</span
+        >
+        {% else %}
+        <span class="badge bg-warning text-dark fs-6"
+          ><i class="fas fa-clock"></i> Unverified</span
+        >
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="row g-2">
+        <div class="col-6">
+          <div class="info-item">
+            <h4>{{ group.photos|length }}</h4>
+            <small>Total Foto</small>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="info-item">
+            <h4>
+              {{ group.photos|selectattr('ocr_success', 'equalto',
+              true)|list|length }}
+            </h4>
+            <small>OCR Sukses</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Time Range -->
+<div class="card mb-4">
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center gap-3">
+          <div class="timeline-badge bg-success">
+            <i class="fas fa-play"></i>
+          </div>
+          <div>
+            <small class="text-muted">Pertama Terlihat</small>
+            <p class="mb-0 fw-bold">
+              {{ group.first_seen.strftime('%d %b %Y, %H:%M:%S') if
+              group.first_seen else 'N/A' }}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex align-items-center gap-3">
+          <div class="timeline-badge bg-danger">
+            <i class="fas fa-stop"></i>
+          </div>
+          <div>
+            <small class="text-muted">Terakhir Terlihat</small>
+            <p class="mb-0 fw-bold">
+              {{ group.last_seen.strftime('%d %b %Y, %H:%M:%S') if
+              group.last_seen else 'N/A' }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Actions -->
+<div class="d-flex gap-2 mb-4 flex-wrap">
+  <a
+    href="{{ url_for('admin.vehicle_detail', id=group.id) }}"
+    class="btn btn-primary"
+  >
+    <i class="fas fa-info-circle"></i> Lihat Detail Lengkap
+  </a>
+  {% if not group.verified %}
+  <button class="btn btn-success" onclick="verifyGroup({{ group.id }})">
+    <i class="fas fa-check"></i> Verifikasi
+  </button>
+  {% endif %}
+  <button
+    class="btn btn-outline-primary"
+    onclick="editPlate({{ group.id }}, '{{ group.plate_text or '' }}')"
+  >
+    <i class="fas fa-edit"></i> Edit Plat
+  </button>
+</div>
+
+<!-- Photo Grid -->
+<h5 class="mb-3"><i class="fas fa-images"></i> Semua Foto dalam Grup</h5>
+
+{% if group.photos %}
+<div class="row" id="photo-grid">
+  {% for photo in group.photos %}
+  <div class="col-6 col-md-4 col-lg-3 mb-4">
+    <div
+      class="photo-card card position-relative"
+      onclick="showPhoto({{ photo.id }})"
+    >
+      {% if photo.annotated_path %}
+      <img
+        src="{{ url_for('static', filename=photo.annotated_path.replace('static/', '')) }}"
+        class="photo-thumbnail"
+        alt="Photo"
+      />
+      {% elif photo.image_path %}
+      <img
+        src="{{ url_for('static', filename=photo.image_path.replace('static/', '')) }}"
+        class="photo-thumbnail"
+        alt="Photo"
+      />
+      {% else %}
+      <div class="photo-thumbnail-placeholder">
+        <i class="fas fa-image fa-3x text-muted"></i>
+      </div>
+      {% endif %}
+
+      <!-- Source Badge -->
+      <span class="source-badge">
+        {% if photo.source_type == 'webcam' %}
+        <span class="badge bg-success"><i class="fas fa-camera"></i></span>
+        {% elif photo.source_type == 'ipcam' %}
+        <span class="badge bg-info"><i class="fas fa-video"></i></span>
+        {% elif photo.source_type == 'video' %}
+        <span class="badge bg-warning text-dark"
+          ><i class="fas fa-film"></i
+        ></span>
+        {% else %}
+        <span class="badge bg-primary"><i class="fas fa-image"></i></span>
+        {% endif %}
+      </span>
+
+      <!-- OCR Badge -->
+      <span class="ocr-badge">
+        {% if photo.ocr_success %}
+        <span class="badge bg-success">
+          {{ (photo.plate_confidence * 100)|round|int }}%
+        </span>
+        {% else %}
+        <span class="badge bg-danger">OCR Fail</span>
+        {% endif %}
+      </span>
+
+      <!-- Overlay Info -->
+      <div class="photo-overlay">
+        <small
+          >{{ photo.timestamp.strftime('%d/%m %H:%M') if photo.timestamp else
+          'N/A' }}</small
+        >
+        {% if photo.plate_text %}
+        <div class="fw-bold">{{ photo.plate_text }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="fas fa-images fa-4x text-muted mb-3"></i>
+  <h5>Belum ada foto</h5>
+  <p class="text-muted">Grup ini belum memiliki foto kendaraan</p>
+</div>
+{% endif %}
+
+<!-- Photo Modal -->
+<div class="modal fade" id="photoModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Detail Foto</h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+        ></button>
+      </div>
+      <div class="modal-body" id="photoModalBody">
+        <!-- Content loaded dynamically -->
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<script>
+  function showPhoto(id) {
+    const modal = new bootstrap.Modal(document.getElementById("photoModal"));
+    modal.show();
+
+    // Load photo details via API
+    fetch(`/api/observations/${id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          const obs = data.data;
+          document.getElementById("photoModalBody").innerHTML = `
+                        <div class="row">
+                            <div class="col-md-8">
+                                ${
+                                  obs.annotated_image_path
+                                    ? `<img src="/static/${obs.annotated_image_path.replace(
+                                        "static/",
+                                        ""
+                                      )}" class="img-fluid rounded">`
+                                    : obs.image_path
+                                    ? `<img src="/static/${obs.image_path.replace(
+                                        "static/",
+                                        ""
+                                      )}" class="img-fluid rounded">`
+                                    : '<div class="bg-light rounded d-flex align-items-center justify-content-center" style="height: 400px;"><i class="fas fa-image fa-4x text-muted"></i></div>'
+                                }
+                            </div>
+                            <div class="col-md-4">
+                                <h6>Informasi</h6>
+                                <table class="table table-sm">
+                                    <tr><th>ID</th><td>${obs.id}</td></tr>
+                                    <tr><th>Waktu</th><td>${
+                                      obs.timestamp || "-"
+                                    }</td></tr>
+                                    <tr><th>Sumber</th><td><span class="badge bg-info">${
+                                      obs.source_type || "image"
+                                    }</span></td></tr>
+                                    <tr><th>Plat</th><td>${
+                                      obs.plate_text ||
+                                      '<span class="text-muted">N/A</span>'
+                                    }</td></tr>
+                                    <tr><th>OCR Confidence</th><td>${(
+                                      obs.plate_confidence * 100
+                                    ).toFixed(0)}%</td></tr>
+                                    <tr><th>Tipe</th><td>${
+                                      obs.vehicle_type || "Unknown"
+                                    }</td></tr>
+                                    <tr><th>Warna</th><td>${
+                                      obs.vehicle_color || "Unknown"
+                                    }</td></tr>
+                                </table>
+                                
+                                <h6 class="mt-4">Crops</h6>
+                                <div class="row g-2">
+                                    ${
+                                      obs.plate_image_path
+                                        ? `
+                                        <div class="col-6">
+                                            <img src="/static/${obs.plate_image_path.replace(
+                                              "static/",
+                                              ""
+                                            )}" class="img-fluid rounded" title="Plate">
+                                            <small class="text-muted d-block mt-1">Plate</small>
+                                        </div>
+                                    `
+                                        : ""
+                                    }
+                                    ${
+                                      obs.driver_image_path
+                                        ? `
+                                        <div class="col-6">
+                                            <img src="/static/${obs.driver_image_path.replace(
+                                              "static/",
+                                              ""
+                                            )}" class="img-fluid rounded" title="Driver">
+                                            <small class="text-muted d-block mt-1">Driver</small>
+                                        </div>
+                                    `
+                                        : ""
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+        }
+      })
+      .catch(() => {
+        document.getElementById("photoModalBody").innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-times-circle fa-3x text-danger mb-3"></i>
+                        <p>Gagal memuat detail foto</p>
+                    </div>
+                `;
+      });
+  }
+
+  function verifyGroup(id) {
+    fetch(`/api/identities/${id}/verify`, { method: "POST" })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.success) {
+          location.reload();
+        } else {
+          alert("Error: " + data.error);
+        }
+      });
+  }
+
+  function editPlate(id, currentPlate) {
+    const newPlate = prompt("Masukkan plat nomor baru:", currentPlate);
+    if (newPlate !== null) {
+      fetch(`/api/identities/${id}/plate`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plate_text: newPlate }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.success) {
+            location.reload();
+          } else {
+            alert("Error: " + data.error);
+          }
+        });
+    }
+  }
+</script>
+{% endblock %}
